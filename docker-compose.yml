@@ -1,0 +1,23 @@
+app:
+  container_name: chakming-bootstrap
+  image: 1science/sbt
+  command: sbt run
+  environment:
+    AMQP_HOST: rabbitmq
+    AMQP_VHOST: /
+    AMQP_USER: admin
+    AMQP_PASSWORD: 123456
+  links:
+    - rabbitmq:rabbitmq
+  volumes:
+    - .:/app
+    - $HOME/.ivy2:/home/linuxbrew/.ivy2
+
+rabbitmq:
+  image: rabbitmq:3-management
+  environment:
+    RABBITMQ_DEFAULT_USER: admin
+    RABBITMQ_DEFAULT_PASS: 123456
+  ports:
+    - "15672:15672"
+    - "5672:5672"
