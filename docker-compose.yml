@@ -1,5 +1,5 @@
 app:
-  container_name: chakming-bootstrap
+  container_name: op-rabbit-akka-stream-bootstrap
   image: 1science/sbt
   command: sbt run
   environment:

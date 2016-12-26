@@ -1,4 +1,4 @@
-package com.chakming.bootstrap
+package com.bootstrap
 
 import akka.actor.{ActorSystem, Props}
 import akka.stream.ActorMaterializer

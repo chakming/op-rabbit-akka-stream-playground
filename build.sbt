@@ -1,7 +1,7 @@
 name := """scala-bootstrap"""
 
 val commonSettings = Seq(
-  organization := "com.chakming",
+  organization := "com.bootstrap",
   scalaVersion := "2.11.8"
 )
 
