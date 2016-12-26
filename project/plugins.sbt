@@ -13,3 +13,4 @@ addSbtPlugin("com.typesafe.sbt" % "sbt-git" % "0.8.4")
 //https://github.com/rtimush/sbt-updates
 addSbtPlugin("com.timushev.sbt" % "sbt-updates" % "0.1.9")
 
+addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.0-M15")

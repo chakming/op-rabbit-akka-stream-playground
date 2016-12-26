@@ -1,6 +1,6 @@
 app:
   container_name: op-rabbit-akka-stream-bootstrap
-  image: 1science/sbt
+  image: charafau/docker-sbt-scala
   command: sbt run
   environment:
     AMQP_HOST: rabbitmq
@@ -10,8 +10,8 @@ app:
   links:
     - rabbitmq:rabbitmq
   volumes:
-    - .:/app
-    - $HOME/.ivy2:/home/linuxbrew/.ivy2
+    - .:/root
+    - $HOME/.ivy2:/root/.ivy2
 
 rabbitmq:
   image: rabbitmq:3-management
