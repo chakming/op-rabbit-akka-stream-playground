@@ -11,7 +11,7 @@ import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.ExecutionContext
 
-object Bootstrap extends App with LazyLogging {
+object Bootstrap extends App with LazyLogging with FlowFactory {
   implicit val ec = ExecutionContext.global
   implicit val system = ActorSystem("MainSystem")
   implicit val materializer = ActorMaterializer()
@@ -38,6 +38,9 @@ object Bootstrap extends App with LazyLogging {
     .via(publishMapping)
     .to(AckedSink.foreach(msg => rabbitControl ! msg))
     .run
+}
+
+trait FlowFactory {
 
   def domainProcessing(implicit ec: ExecutionContext): AckedFlow[String, CensoredMessage, NotUsed] =
     AckedFlow[String]
@@ -48,9 +51,9 @@ object Bootstrap extends App with LazyLogging {
     AckedFlow[CensoredMessage].map {
       case MessageSafe(msg) =>
         Message(
-        body = msg.getBytes,
-        publisher = publisher("censorship.outbound.okqueue")
-      )
+          body = msg.getBytes,
+          publisher = publisher("censorship.outbound.okqueue")
+        )
       case MessageThreat(msg) => Message(
         body = msg.getBytes,
         publisher = publisher("censorship.outbound.notokqueue")
@@ -60,4 +63,5 @@ object Bootstrap extends App with LazyLogging {
   private def publisher(queueName: String): Publisher = {
     Publisher.queue(queue(queueName, durable = true, exclusive = false, autoDelete = false))
   }
+
 }
