@@ -27,10 +27,10 @@ object Bootstrap extends App with LazyLogging {
     def unmarshall(value: Array[Byte], contentType: Option[String], charset: Option[String]) = new String(value)
   }
 
-  val source = RabbitSource(
+  RabbitSource(
     rabbitControl,
     channel(qos),
-    consume(queue("such-queue", durable = true, exclusive = false, autoDelete = false)),
+    consume(queue("censorship.inbound.queue", durable = true, exclusive = false, autoDelete = false)),
     body(as[String])
   ).runForeach { result =>
     logger.debug("string: {}", result)
