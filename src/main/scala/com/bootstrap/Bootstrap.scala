@@ -25,6 +25,7 @@ object Bootstrap extends App with LazyLogging {
     val contentEncoding = Some("UTF-8")
 
     def marshall(value: String) = value.getBytes
+
     def unmarshall(value: Array[Byte], contentType: Option[String], charset: Option[String]) = new String(value)
   }
 
@@ -36,18 +37,18 @@ object Bootstrap extends App with LazyLogging {
   )
     .mapAsync(3)(DomainService.expensiveCall)
     .map(DomainService.classify)
-    .map {
-      case MessageSafe(msg) => publish("censorship.outbound.okqueue", msg)
-      case MessageThreat(msg) => publish("censorship.outbound.notokqueue", msg)
-    }
-    .runAck
+    .map(publishMapping)
+    .to(AckedSink.foreach(msg => rabbitControl ! msg))
+    .run
 
-  private def publish(queueName: String, msg: String)(implicit ec: ExecutionContext) = {
-    logger.debug("queue: {}, msg: {}", queueName, msg)
-    val publisher = Publisher.queue(Queue.passive(queue(queueName, durable = true, exclusive = false, autoDelete = false)))
-    rabbitControl ! Message(
+  def publishMapping(censoredMessage: CensoredMessage): Message = censoredMessage match {
+    case MessageSafe(msg) => Message(
       body = msg.getBytes,
-      publisher = publisher
+      publisher = Publisher.queue(queue("censorship.outbound.okqueue", durable = true, exclusive = false, autoDelete = false))
+    )
+    case MessageThreat(msg) => Message(
+      body = msg.getBytes,
+      publisher = Publisher.queue(queue("censorship.outbound.notokqueue", durable = true, exclusive = false, autoDelete = false))
     )
   }
 }
