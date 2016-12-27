@@ -5,6 +5,7 @@ import akka.stream.ActorMaterializer
 import com.spingo.op_rabbit.Directives._
 import com.spingo.op_rabbit._
 import com.spingo.op_rabbit.stream.RabbitSource
+import com.timcharper.acked.AckedSink
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.ExecutionContext
@@ -32,8 +33,21 @@ object Bootstrap extends App with LazyLogging {
     channel(qos),
     consume(queue("censorship.inbound.queue", durable = true, exclusive = false, autoDelete = false)),
     body(as[String])
-  ).runForeach { result =>
-    logger.debug("string: {}", result)
-  }
+  )
+    .mapAsync(3)(DomainService.expensiveCall)
+    .map(DomainService.classify)
+    .map {
+      case MessageSafe(msg) => publish("censorship.outbound.okqueue", msg)
+      case MessageThreat(msg) => publish("censorship.outbound.notokqueue", msg)
+    }
+    .runAck
 
+  private def publish(queueName: String, msg: String)(implicit ec: ExecutionContext) = {
+    logger.debug("queue: {}, msg: {}", queueName, msg)
+    val publisher = Publisher.queue(Queue.passive(queue(queueName, durable = true, exclusive = false, autoDelete = false)))
+    rabbitControl ! Message(
+      body = msg.getBytes,
+      publisher = publisher
+    )
+  }
 }
