@@ -1,11 +1,12 @@
 package com.bootstrap
 
+import akka.NotUsed
 import akka.actor.{ActorSystem, Props}
 import akka.stream.ActorMaterializer
 import com.spingo.op_rabbit.Directives._
 import com.spingo.op_rabbit._
 import com.spingo.op_rabbit.stream.RabbitSource
-import com.timcharper.acked.AckedSink
+import com.timcharper.acked.{AckedFlow, AckedSink}
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.ExecutionContext
@@ -25,7 +26,6 @@ object Bootstrap extends App with LazyLogging {
     val contentEncoding = Some("UTF-8")
 
     def marshall(value: String) = value.getBytes
-
     def unmarshall(value: Array[Byte], contentType: Option[String], charset: Option[String]) = new String(value)
   }
 
@@ -34,21 +34,30 @@ object Bootstrap extends App with LazyLogging {
     channel(qos),
     consume(queue("censorship.inbound.queue", durable = true, exclusive = false, autoDelete = false)),
     body(as[String])
-  )
-    .mapAsync(3)(DomainService.expensiveCall)
-    .map(DomainService.classify)
-    .map(publishMapping)
+  ).via(domainProcessing)
+    .via(publishMapping)
     .to(AckedSink.foreach(msg => rabbitControl ! msg))
     .run
 
-  def publishMapping(censoredMessage: CensoredMessage): Message = censoredMessage match {
-    case MessageSafe(msg) => Message(
-      body = msg.getBytes,
-      publisher = Publisher.queue(queue("censorship.outbound.okqueue", durable = true, exclusive = false, autoDelete = false))
-    )
-    case MessageThreat(msg) => Message(
-      body = msg.getBytes,
-      publisher = Publisher.queue(queue("censorship.outbound.notokqueue", durable = true, exclusive = false, autoDelete = false))
-    )
+  def domainProcessing(implicit ec: ExecutionContext): AckedFlow[String, CensoredMessage, NotUsed] =
+    AckedFlow[String]
+      .mapAsync(3)(DomainService.expensiveCall)
+      .map(DomainService.classify)
+
+  def publishMapping: AckedFlow[CensoredMessage, Message, NotUsed] =
+    AckedFlow[CensoredMessage].map {
+      case MessageSafe(msg) =>
+        Message(
+        body = msg.getBytes,
+        publisher = publisher("censorship.outbound.okqueue")
+      )
+      case MessageThreat(msg) => Message(
+        body = msg.getBytes,
+        publisher = publisher("censorship.outbound.notokqueue")
+      )
+    }
+
+  private def publisher(queueName: String): Publisher = {
+    Publisher.queue(queue(queueName, durable = true, exclusive = false, autoDelete = false))
   }
 }
