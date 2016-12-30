@@ -21,14 +21,6 @@ object Bootstrap extends App with LazyLogging with FlowFactory {
   val qos = 1
   val rabbitControl = system.actorOf(Props[RabbitControl])
 
-  implicit val simpleStringMarshaller = new RabbitMarshaller[String] with RabbitUnmarshaller[String] {
-    val contentType = "text/plain"
-    val contentEncoding = Some("UTF-8")
-
-    def marshall(value: String) = value.getBytes
-    def unmarshall(value: Array[Byte], contentType: Option[String], charset: Option[String]) = new String(value)
-  }
-
   RabbitSource(
     rabbitControl,
     channel(qos),
