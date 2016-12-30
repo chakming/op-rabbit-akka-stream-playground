@@ -6,7 +6,7 @@ import akka.stream.ActorMaterializer
 import com.spingo.op_rabbit.Directives._
 import com.spingo.op_rabbit._
 import com.spingo.op_rabbit.stream.RabbitSource
-import com.timcharper.acked.{AckedFlow, AckedSink}
+import com.timcharper.acked.AckedFlow
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.ExecutionContext
@@ -28,8 +28,8 @@ object Bootstrap extends App with LazyLogging with FlowFactory {
     body(as[String])
   ).via(domainProcessing)
     .via(publishMapping)
-    .to(AckedSink.foreach(msg => rabbitControl ! msg))
-    .run
+    .map(rabbitControl ! _)
+    .runAck
 }
 
 trait FlowFactory {
