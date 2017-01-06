@@ -1,4 +1,4 @@
-name := """scala-bootstrap"""
+name := """op-rabbit-akka-stream-playground"""
 
 val commonSettings = Seq(
   organization := "com.bootstrap",
